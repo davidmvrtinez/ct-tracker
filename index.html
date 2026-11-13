@@ -61,7 +61,7 @@ input[type=date]{min-height:44px;-webkit-appearance:none;appearance:none}
 textarea{min-height:70px;resize:vertical}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .seg{display:flex;background:var(--field);border:1px solid var(--line);border-radius:10px;padding:3px;gap:3px}
-.seg button{flex:1;border:0;background:none;padding:8px 4px;border-radius:8px;font-size:15px;color:var(--ink)}
+.seg button{flex:1;border:0;background:none;padding:8px 2px;border-radius:8px;font-size:14px;line-height:1.2;color:var(--ink)}
 .seg button.on{background:var(--card);box-shadow:0 1px 3px rgba(0,0,0,.18);font-weight:650}
 .hint{font-size:13px;color:var(--sub);margin-top:5px}
 .btn{display:block;width:100%;padding:13px;border-radius:12px;border:0;font-size:16px;font-weight:650;background:var(--accent);color:var(--accent-ink);margin-top:10px;text-align:center;text-decoration:none}
@@ -70,7 +70,7 @@ textarea{min-height:70px;resize:vertical}
 .btns{display:flex;gap:8px}.btns .btn{flex:1}
 .status{border-radius:12px;padding:12px 14px;font-weight:650;margin:12px 0;background:var(--green-bg);color:var(--green)}
 .steps{display:flex;gap:6px;margin:6px 0 4px}
-.steps div{flex:1;text-align:center;font-size:12px;color:var(--sub);padding-top:8px;border-top:4px solid var(--line)}
+.steps div{flex:1;text-align:center;font-size:11px;color:var(--sub);padding-top:8px;border-top:4px solid var(--line)}
 .steps div.done{border-color:var(--accent);color:var(--ink);font-weight:650}
 .list{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
 .li{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 14px;border-top:1px solid var(--line)}
@@ -108,7 +108,7 @@ pre.prompt{white-space:pre-wrap;background:var(--card);border:1px solid var(--li
 /* ============ Storage ============ */
 const KEY = 'ct_tracker_v1';
 const uid = () => Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4);
-const STAGES = { requested: 'CT Requested', received: 'CT Received', uploaded: 'Uploaded (Completed)' };
+const STAGES = { pending: 'Not Requested', requested: 'CT Requested', received: 'CT Received', uploaded: 'Uploaded (Completed)' };
 function fresh() {
   return {
     cases: [], surgeons: [], centers: [], hospitals: [],
@@ -147,7 +147,7 @@ function toast(msg) { const t = document.getElementById('toast'); t.textContent 
 
 function makeCode(first, last, dob, side, selfId) {
   const ini = ((first || '').trim()[0] || '') + ((last || '').trim()[0] || '');
-  const base = ini.toUpperCase() + '-' + (dob ? dob.slice(2, 4) : '??') + (side ? '-' + side[0] : '');
+  const base = ini.toUpperCase() + '-' + (dob ? dob.slice(2, 4) : '??') + (side && side !== 'Unknown' ? '-' + side[0] : '');
   let code = base, i = 2;
   while (S.cases.some(c => c.code === code && c.id !== selfId)) code = base + i++;
   return code;
@@ -170,7 +170,8 @@ function info(c) {
     if (over > 0) { msg = `Follow-up overdue ${over} day${over > 1 ? 's' : ''}`; tier = 2; }
     else if (over === 0) { msg = 'Follow up today'; tier = 2; }
     else msg = 'Waiting on CT · follow up ' + nice(due);
-  } else if (c.stage === 'received') { msg = 'CT received · upload to Materialise'; tier = 1; }
+  } else if (c.stage === 'pending') { msg = 'CT not requested yet · request from ' + nm('centers', c.centerId); tier = 1; }
+  else if (c.stage === 'received') { msg = 'CT received · upload to Materialise'; tier = 1; }
   else msg = 'Completed ' + nice(c.completedAt);
   if (c.stage !== 'uploaded' && dts !== null) { if (dts <= 7) tier = 2; else if (dts <= 21) tier = Math.max(tier, 1); }
   return { tier, dts, msg, due: followUpDue(c) };
@@ -181,6 +182,11 @@ function surgLabel(c, dts) {
   if (dts === 0) return 'Surgery TODAY';
   if (dts === 1) return 'Surgery tomorrow';
   return `Surgery ${nice(c.surgeryDate)} · ${dts} days`;
+}
+function procLabel(c) {
+  const pr = nm('procedures', c.procedureId);
+  if (c.side === 'Unknown') return [pr, '(side TBD)'].filter(Boolean).join(' ');
+  return [c.side, pr].filter(Boolean).join(' ');
 }
 function cmp(a, b) {
   const A = info(a), B = info(b);
@@ -248,7 +254,7 @@ function card(c) {
   const t = c.stage === 'uploaded' ? 9 : i.tier;
   return `<div class="card t${t}" onclick="openDetail('${c.id}')">
     <div class="row1"><span class="name">${esc(c.last)}, ${esc(c.first)}</span><span class="code">${esc(c.code)}</span></div>
-    <div class="meta">${esc(nm('surgeons', c.surgeonId))}${pr || c.side ? ' · ' + esc([c.side, pr].filter(Boolean).join(' ')) : ''}</div>
+    <div class="meta">${esc(nm('surgeons', c.surgeonId))}${pr || c.side ? ' · ' + esc(procLabel(c)) : ''}</div>
     <div class="meta">${esc(surgLabel(c, i.dts))} · ${esc(nm('centers', c.centerId))}</div>
     <span class="badge">${esc(i.msg)}</span></div>`;
 }
@@ -274,7 +280,7 @@ function pick(list, el, field) {
 function openForm(id) {
   if (!id && (!S.surgeons.length || !S.centers.length)) { toast('Add a surgeon and an imaging center in Setup first'); go('setup'); return; }
   const c = id ? getCase(id) : null;
-  D = c ? JSON.parse(JSON.stringify(c)) : { id: null, first: '', last: '', dob: '', surgeonId: '', centerId: '', hospitalId: '', procedureId: '', side: '', implantId: '', surgeryDate: '', requestedDate: today(), stage: 'requested', notes: [] };
+  D = c ? JSON.parse(JSON.stringify(c)) : { id: null, first: '', last: '', dob: '', surgeonId: '', centerId: '', hospitalId: '', procedureId: '', side: '', implantId: '', surgeryDate: '', requestedDate: today(), stage: 'pending', notes: [] };
   D._noSurg = c ? !c.surgeryDate : false;
   drawForm();
 }
@@ -292,16 +298,16 @@ function drawForm() {
   <div class="hint">Case code: <span class="code-big" id="codePrev">${esc(makeCode(D.first, D.last, D.dob, D.side, D.id))}</span></div>
   <label>Surgeon</label><select onchange="pick('surgeons',this,'surgeonId')">${opts('surgeons', D.surgeonId, 'Choose surgeon')}</select>
   <label>Procedure</label><select onchange="pick('procedures',this,'procedureId')">${opts('procedures', D.procedureId, 'Choose procedure')}</select>
-  <label>Side</label>${seg('side', [['Left', 'Left'], ['Right', 'Right']])}
+  <label>Side</label>${seg('side', [['Left', 'Left'], ['Right', 'Right'], ['Unknown', 'Not sure yet']])}
   <label>Hospital (surgery location)</label><select onchange="pick('hospitals',this,'hospitalId')">${opts('hospitals', D.hospitalId, 'Choose hospital')}</select>
   ${S.implants.length ? `<label>Implant system</label><select onchange="pick('implants',this,'implantId')">${opts('implants', D.implantId, 'None')}</select>` : ''}
   <label>Surgery date</label>
   <div class="seg"><button type="button" class="${!D._noSurg ? 'on' : ''}" onclick="D._noSurg=false;drawForm()">Date</button><button type="button" class="${D._noSurg ? 'on' : ''}" onclick="D._noSurg=true;drawForm()">Not yet scheduled</button></div>
   ${!D._noSurg ? `<input style="margin-top:8px" type="date" value="${esc(D.surgeryDate)}" onchange="D.surgeryDate=this.value">` : ''}
   <label>CT scan done at (imaging center)</label><select onchange="pick('centers',this,'centerId')">${opts('centers', D.centerId, 'Choose imaging center')}</select>
-  <label>Date CT was requested</label><input type="date" value="${esc(D.requestedDate)}" onchange="D.requestedDate=this.value">
-  <div class="hint">You'll be reminded to follow up 2 business days later.</div>
-  <label>Stage</label>${seg('stage', [['requested', 'Requested'], ['received', 'Received'], ['uploaded', 'Uploaded']])}
+  <label>Stage</label>${seg('stage', [['pending', 'Not requested'], ['requested', 'Requested'], ['received', 'Received'], ['uploaded', 'Uploaded']])}
+  ${D.stage !== 'pending' ? `<label>Date CT was requested</label><input type="date" value="${esc(D.requestedDate)}" onchange="D.requestedDate=this.value">
+  <div class="hint">You'll be reminded to follow up 2 business days later.</div>` : `<div class="hint">It'll show as a to-do until you mark the CT as requested.</div>`}
   ${isNew ? `<label>First note (optional)</label><textarea id="firstNote" placeholder="e.g. Emailed records dept, asked for disc + portal link"></textarea>` : ''}
   <button class="btn" onclick="saveForm()">Save</button>
   `);
@@ -311,7 +317,7 @@ function updCode() { const el = document.getElementById('codePrev'); if (el) el.
 function saveForm() {
   const miss = [];
   if (!D.first.trim()) miss.push('first name'); if (!D.last.trim()) miss.push('last name'); if (!D.dob) miss.push('date of birth');
-  if (!D.side) miss.push('side (left/right)');
+  if (!D.side) miss.push('side (left, right or not sure yet)');
   if (!D.surgeonId) miss.push('surgeon'); if (!D.centerId) miss.push('imaging center');
   if (!D._noSurg && !D.surgeryDate) miss.push('surgery date (or tap "Not yet scheduled")');
   if (miss.length) { alert('Please add: ' + miss.join(', ')); return; }
@@ -323,7 +329,7 @@ function saveForm() {
   let c = D.id ? getCase(D.id) : null;
   if (!c) {
     c = { id: uid(), createdAt: stamp, notes: [] }; S.cases.push(c);
-    c.notes.push({ ts: stamp, text: `CT requested from ${nm('centers', D.centerId)}` });
+    c.notes.push({ ts: stamp, text: D.stage === 'pending' ? 'Patient added, CT not requested yet' : `CT requested from ${nm('centers', D.centerId)}` });
     if (firstNote.trim()) c.notes.push({ ts: stamp, text: firstNote.trim() });
   } else if (c.stage !== D.stage) {
     c.notes.push({ ts: stamp, text: 'Stage changed to ' + STAGES[D.stage] });
@@ -343,11 +349,12 @@ function saveForm() {
 function openDetail(id) {
   const c = getCase(id); if (!c) return closeSheet();
   const i = info(c), ce = byId('centers', c.centerId) || {}, sg = nm('surgeons', c.surgeonId);
-  const order = ['requested', 'received', 'uploaded'], si = order.indexOf(c.stage);
+  const order = ['pending', 'requested', 'received', 'uploaded'], si = order.indexOf(c.stage);
   const row = (k, v) => v ? `<div class="li"><span class="k">${k}</span><span class="v">${v}</span></div>` : '';
   const subj = encodeURIComponent(`CT scan request: ${c.first} ${c.last}, DOB ${niceY(c.dob)}`);
-  const body = encodeURIComponent(`Hi${ce.contact ? ' ' + ce.contact : ''},\n\nI'm following up on the CT scan for ${c.first} ${c.last}, DOB ${niceY(c.dob)}, for upcoming surgery with ${sg}. Could you please send the images when you get a chance?\n\nThank you,`);
+  const body = encodeURIComponent(`Hi${ce.contact ? ' ' + ce.contact : ''},\n\n${c.stage === 'pending' ? 'I\'d like to request the CT scan' : 'I\'m following up on the CT scan'} for ${c.first} ${c.last}, DOB ${niceY(c.dob)}, for upcoming surgery with ${sg}. Could you please send the images when you get a chance?\n\nThank you,`);
   let actions = '';
+  if (c.stage === 'pending') actions = `<button class="btn" onclick="setStage('${c.id}','requested')">CT requested ✓</button><div class="hint" style="text-align:center">Starts the 2-business-day follow-up clock.</div>`;
   if (c.stage === 'requested') actions = `<div class="btns"><button class="btn ghost" onclick="logFollowUp('${c.id}')">Log follow-up</button><button class="btn" onclick="setStage('${c.id}','received')">CT received ✓</button></div>`;
   if (c.stage === 'received') actions = `<button class="btn" onclick="setStage('${c.id}','uploaded')">Uploaded to Materialise ✓</button><div class="hint" style="text-align:center">This moves the patient to Completed.</div>`;
   if (c.stage === 'uploaded') actions = `<button class="btn ghost" onclick="setStage('${c.id}','received')">Reopen patient</button>`;
@@ -357,19 +364,19 @@ function openDetail(id) {
   <h2>${esc(c.first)} ${esc(c.last)}</h2>
   <div class="code-big">${esc(c.code)}</div>
   <div class="status t${c.stage === 'uploaded' ? 0 : i.tier}">${esc(i.msg)}<div style="font-weight:500;font-size:14px;margin-top:2px">${esc(surgLabel(c, i.dts))}</div></div>
-  <div class="steps">${order.map((s, k) => `<div class="${k <= si ? 'done' : ''}">${['Requested', 'Received', 'Uploaded'][k]}</div>`).join('')}</div>
+  <div class="steps">${order.map((s, k) => `<div class="${k <= si ? 'done' : ''}">${['Not requested', 'Requested', 'Received', 'Uploaded'][k]}</div>`).join('')}</div>
   ${actions}
   ${c.stage === 'requested' ? `<label>Next follow-up</label><input type="date" value="${i.due}" onchange="setFollow('${c.id}',this.value)"><div class="hint">Change this if the center gave you a date (e.g. "sending Monday").</div>` : ''}
 
   <h3>Imaging center</h3>
-  <div class="list">${row('Center', esc(ce.name))}${row('Contact', esc(ce.contact))}${row('Phone', esc(ce.phone))}${row('Fax', esc(ce.fax))}${row('Email', esc(ce.email))}${row('CT requested', niceY(c.requestedDate))}</div>
+  <div class="list">${row('Center', esc(ce.name))}${row('Contact', esc(ce.contact))}${row('Phone', esc(ce.phone))}${row('Fax', esc(ce.fax))}${row('Email', esc(ce.email))}${c.stage !== 'pending' ? row('CT requested', niceY(c.requestedDate)) : row('CT requested', 'Not yet')}</div>
   <div class="contact">
     ${ce.phone ? `<a class="btn ghost" href="tel:${esc(ce.phone.replace(/[^\d+]/g, ''))}">Call</a>` : ''}
     ${ce.email ? `<a class="btn ghost" href="mailto:${esc(ce.email)}?subject=${subj}&body=${body}">Email</a>` : ''}
   </div>
 
   <h3>Case</h3>
-  <div class="list">${row('Date of birth', niceY(c.dob))}${row('Surgeon', esc(sg))}${row('Procedure', esc([c.side, nm('procedures', c.procedureId)].filter(Boolean).join(' ')))}${row('Hospital', esc(nm('hospitals', c.hospitalId)))}${row('Surgery', c.surgeryDate ? niceY(c.surgeryDate) : 'Not yet scheduled')}${row('Implant system', esc(nm('implants', c.implantId)))}${row('Completed', niceY(c.completedAt))}</div>
+  <div class="list">${row('Date of birth', niceY(c.dob))}${row('Surgeon', esc(sg))}${row('Procedure', esc(procLabel(c)))}${row('Hospital', esc(nm('hospitals', c.hospitalId)))}${row('Surgery', c.surgeryDate ? niceY(c.surgeryDate) : 'Not yet scheduled')}${row('Implant system', esc(nm('implants', c.implantId)))}${row('Completed', niceY(c.completedAt))}</div>
 
   <h3>Notes</h3>
   <textarea id="noteTxt" placeholder="e.g. Called, spoke to Maria, sending today"></textarea>
@@ -389,9 +396,10 @@ function logFollowUp(id) {
 function setFollow(id, v) { const c = getCase(id); c.followOverride = v || ''; save(); toast(v ? 'Follow-up set for ' + nice(v) : 'Follow-up reset'); openDetail(id); }
 function setStage(id, st) {
   const c = getCase(id); c.stage = st;
+  if (st === 'requested') { c.requestedDate = today(); c.lastContact = ''; c.followOverride = ''; }
   if (st === 'received') { c.receivedAt = c.receivedAt || today(); c.completedAt = null; }
   if (st === 'uploaded') c.completedAt = today();
-  c.notes.push({ ts: new Date().toISOString(), text: { received: 'CT received', uploaded: 'CT uploaded to Materialise, case completed' }[st] });
+  c.notes.push({ ts: new Date().toISOString(), text: { requested: `CT requested from ${nm('centers', c.centerId)}`, received: 'CT received', uploaded: 'CT uploaded to Materialise, case completed' }[st] });
   save();
   if (st === 'uploaded') { toast('Done! Moved to Completed'); closeSheet(); } else openDetail(id);
 }
@@ -470,8 +478,8 @@ function payload() {
     return {
       code: c.code, surgeon: nm('surgeons', c.surgeonId), procedure: nm('procedures', c.procedureId), side: c.side || '',
       hospital: nm('hospitals', c.hospitalId), stage: STAGES[c.stage],
-      nextAction: { requested: 'Get CT from imaging center', received: 'Upload CT to Materialise', uploaded: 'Done' }[c.stage],
-      ctRequested: c.requestedDate || '', lastFollowUp: c.lastContact || '', followUpDue: i.due || '',
+      nextAction: { pending: 'Request CT from imaging center', requested: 'Get CT from imaging center', received: 'Upload CT to Materialise', uploaded: 'Done' }[c.stage],
+      ctRequested: c.stage === 'pending' ? '' : (c.requestedDate || ''), lastFollowUp: c.lastContact || '', followUpDue: i.due || '',
       surgeryWeekOf: c.surgeryDate ? weekOf(c.surgeryDate) : 'Not scheduled',
       center: ce.name || '', centerContact: ce.contact || '', centerPhone: ce.phone || '', centerEmail: ce.email || '', centerFax: ce.fax || '',
       completed: c.completedAt || ''
@@ -530,9 +538,10 @@ function importBackup(input) {
 }
 
 /* ============ Duet ============ */
-const DUET_PROMPT = `Please keep an eye on my Google Sheet "CT Tracker" every weekday. It tracks CT scans I need from imaging centers so surgeons can plan shoulder implants. Each patient is a case code (initials + birth year + side, e.g. JS-85-R = right shoulder).
+const DUET_PROMPT = `Please keep an eye on my Google Sheet "CT Tracker" every weekday. It tracks CT scans I need from imaging centers so surgeons can plan shoulder implants. Each patient is a case code (initials + birth year + side, e.g. JS-85-R = right shoulder; no letter means side not known yet).
 
 On the "Active" tab:
+- If Stage is "Not Requested", remind me to request the CT from that imaging center (with its contact info).
 - If Stage is "CT Requested" and Follow-up Due is today or earlier, remind me to follow up with that imaging center. Include the center name, contact, phone and email, and offer to draft a follow-up email for my approval (leave a [patient name / DOB] placeholder for me to fill in).
 - If Stage is "CT Received", remind me to upload it to Materialise.
 - Treat anything with Surgery Week Of within the next 2 weeks as urgent and list it first.
