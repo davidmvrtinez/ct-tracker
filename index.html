@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="CT Tracker">
+<meta name="theme-color" content="#f2f3f5">
+<meta name="robots" content="noindex,nofollow">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<title>CT Tracker</title>
+<style>
+:root{--bg:#f2f3f5;--card:#fff;--ink:#14171c;--sub:#5f6672;--line:#e1e4e8;--accent:#0b6e75;--accent-ink:#fff;--red:#c4322b;--red-bg:#fdecea;--amber:#a86400;--amber-bg:#fff3dc;--green:#2f7d4f;--green-bg:#e6f4ea;--field:#f7f8fa}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1114;--card:#1a1d22;--ink:#eef0f3;--sub:#9aa2ad;--line:#2b3037;--accent:#3fb6be;--accent-ink:#04292b;--red:#ff6b62;--red-bg:#3a1b19;--amber:#ffb547;--amber-bg:#3a2a10;--green:#5fcf8c;--green-bg:#15301f;--field:#22262c}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,"Segoe UI",sans-serif}
+button{font:inherit;cursor:pointer}
+header{position:sticky;top:0;z-index:5;background:var(--bg);padding:calc(env(safe-area-inset-top) + 10px) 16px 6px}
+h1{font-size:30px;margin:6px 0 2px;letter-spacing:-.02em}
+h2{font-size:24px;margin:10px 0 2px;letter-spacing:-.01em}
+h3{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--sub);margin:24px 0 8px}
+.summary{color:var(--sub);font-size:14px;margin-bottom:10px}
+.summary b{color:var(--red)}
+main{padding:0 16px calc(110px + env(safe-area-inset-bottom))}
+.search{margin-bottom:8px}
+.filters{display:flex;gap:8px;overflow-x:auto;padding:2px 0 8px;scrollbar-width:none}
+.filters::-webkit-scrollbar{display:none}
+.chip{flex:none;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:7px 13px;font-size:14px;width:auto}
+.chip.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+select.chip{-webkit-appearance:none;appearance:none;padding-right:13px}
+.card{background:var(--card);border-radius:14px;padding:12px 14px 12px 19px;margin:10px 0;position:relative;overflow:hidden;border:1px solid var(--line)}
+.card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--green)}
+.card.t1::before{background:var(--amber)}.card.t2::before{background:var(--red)}.card.t9::before{background:var(--line)}
+.row1{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.name{font-weight:650;font-size:17px}
+.code{font:600 13px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--sub);white-space:nowrap}
+.meta{color:var(--sub);font-size:14px;margin-top:2px}
+.badge{display:inline-block;margin-top:8px;font-size:13px;font-weight:650;padding:3px 9px;border-radius:7px;background:var(--green-bg);color:var(--green)}
+.t1 .badge,.status.t1{background:var(--amber-bg);color:var(--amber)}
+.t2 .badge,.status.t2{background:var(--red-bg);color:var(--red)}
+.t9 .badge{background:var(--field);color:var(--sub)}
+.empty{text-align:center;color:var(--sub);padding:48px 20px}
+.empty .btn{max-width:260px;margin:16px auto 0}
+nav.tabs{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);border-top:1px solid var(--line);padding:6px 0 calc(6px + env(safe-area-inset-bottom));z-index:6}
+nav.tabs button{flex:1;background:none;border:0;color:var(--sub);font-size:11px;padding:4px 0;display:flex;flex-direction:column;align-items:center;gap:2px}
+nav.tabs button.on{color:var(--accent);font-weight:650}
+nav.tabs svg{width:25px;height:25px}
+.fab{position:fixed;right:18px;bottom:calc(78px + env(safe-area-inset-bottom));width:58px;height:58px;border-radius:29px;background:var(--accent);color:var(--accent-ink);border:0;font-size:32px;line-height:1;box-shadow:0 6px 18px rgba(0,0,0,.22);z-index:7}
+.sheet{position:fixed;inset:0;background:var(--bg);z-index:20;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 16px calc(48px + env(safe-area-inset-bottom));transform:translateY(102%);transition:transform .26s ease}
+.sheet.open{transform:none}
+.sheet-head{position:sticky;top:0;z-index:2;background:var(--bg);display:flex;justify-content:space-between;align-items:center;padding:calc(env(safe-area-inset-top) + 10px) 0 8px}
+.link{background:none;border:0;color:var(--accent);font-size:17px;padding:6px 0}
+.link.b{font-weight:650}
+label{display:block;font-size:12px;color:var(--sub);margin:16px 0 5px;font-weight:650;text-transform:uppercase;letter-spacing:.04em}
+input,select,textarea{width:100%;font-size:16px;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:var(--field);color:var(--ink);font-family:inherit}
+input[type=date]{min-height:44px;-webkit-appearance:none;appearance:none}
+textarea{min-height:70px;resize:vertical}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.seg{display:flex;background:var(--field);border:1px solid var(--line);border-radius:10px;padding:3px;gap:3px}
+.seg button{flex:1;border:0;background:none;padding:8px 4px;border-radius:8px;font-size:15px;color:var(--ink)}
+.seg button.on{background:var(--card);box-shadow:0 1px 3px rgba(0,0,0,.18);font-weight:650}
+.hint{font-size:13px;color:var(--sub);margin-top:5px}
+.btn{display:block;width:100%;padding:13px;border-radius:12px;border:0;font-size:16px;font-weight:650;background:var(--accent);color:var(--accent-ink);margin-top:10px;text-align:center;text-decoration:none}
+.btn.ghost{background:var(--card);color:var(--accent);border:1px solid var(--line)}
+.btn.danger{background:none;color:var(--red);border:1px solid var(--line)}
+.btns{display:flex;gap:8px}.btns .btn{flex:1}
+.status{border-radius:12px;padding:12px 14px;font-weight:650;margin:12px 0;background:var(--green-bg);color:var(--green)}
+.steps{display:flex;gap:6px;margin:6px 0 4px}
+.steps div{flex:1;text-align:center;font-size:12px;color:var(--sub);padding-top:8px;border-top:4px solid var(--line)}
+.steps div.done{border-color:var(--accent);color:var(--ink);font-weight:650}
+.list{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.li{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 14px;border-top:1px solid var(--line)}
+.li:first-child{border-top:0}
+.li .k{color:var(--sub);font-size:14px;flex:none}
+.li .v{text-align:right;font-size:15px;word-break:break-word}
+.li.tap{cursor:pointer}
+.li .chev{color:var(--sub)}
+.contact{display:flex;gap:8px;margin-top:8px}
+.contact .btn{margin-top:0;padding:10px;font-size:15px}
+.note{padding:10px 14px;border-top:1px solid var(--line);font-size:15px}
+.note:first-child{border-top:0}
+.note small{display:block;color:var(--sub);font-size:12px;margin-bottom:2px}
+.code-big{font:650 15px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--accent)}
+.toast{position:fixed;left:50%;bottom:calc(150px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:15px;opacity:0;transition:.25s;z-index:50;pointer-events:none;max-width:88vw;text-align:center}
+.toast.show{opacity:1;transform:translateX(-50%)}
+.ok{color:var(--green)}.bad{color:var(--red)}
+pre.prompt{white-space:pre-wrap;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;font-size:13px;margin:0}
+</style>
+</head>
+<body>
+<header id="hdr"></header>
+<main id="main"></main>
+<button class="fab" id="fab" onclick="openForm()" aria-label="Add patient">+</button>
+<nav class="tabs">
+  <button id="tab-active" onclick="go('active')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1.2" fill="currentColor"/><circle cx="4.5" cy="12" r="1.2" fill="currentColor"/><circle cx="4.5" cy="18" r="1.2" fill="currentColor"/></svg>Active</button>
+  <button id="tab-done" onclick="go('done')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.7 2.7L16 9.8"/></svg>Completed</button>
+  <button id="tab-setup" onclick="go('setup')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>Setup</button>
+</nav>
+<div class="sheet" id="sheet"></div>
+<div class="toast" id="toast"></div>
+<input type="file" id="importFile" accept="application/json,.json" style="display:none" onchange="importBackup(this)">
+
+<script>
+/* ============ Storage ============ */
+const KEY = 'ct_tracker_v1';
+const uid = () => Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4);
+const STAGES = { requested: 'CT Requested', received: 'CT Received', uploaded: 'Uploaded (Completed)' };
+function fresh() {
+  return {
+    cases: [], surgeons: [], centers: [], hospitals: [],
+    procedures: ['Reverse', 'Anatomic', 'Reverse Augment', 'Anatomic Augment'].map(name => ({ id: uid(), name })),
+    implants: [],
+    sync: { url: '', token: '', last: null, err: null }
+  };
+}
+function load() {
+  try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.cases) return Object.assign(fresh(), s); } catch (e) {}
+  return fresh();
+}
+let S = load();
+let syncTimer;
+function save(skipSync) {
+  localStorage.setItem(KEY, JSON.stringify(S));
+  if (!skipSync && S.sync.url) { clearTimeout(syncTimer); syncTimer = setTimeout(() => sync(false), 1200); }
+}
+
+/* ============ Dates (all stored as YYYY-MM-DD, local) ============ */
+const pd = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+const fd = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const today = () => fd(new Date());
+const daysBetween = (a, b) => Math.round((pd(b) - pd(a)) / 864e5);
+function addBiz(s, n) { const d = pd(s); let k = 0; while (k < n) { d.setDate(d.getDate() + 1); const w = d.getDay(); if (w !== 0 && w !== 6) k++; } return fd(d); }
+function weekOf(s) { const d = pd(s); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return fd(d); }
+const nice = s => s ? pd(s).toLocaleDateString('en-US', { weekday: 'short', month: 'numeric', day: 'numeric' }) : '';
+const niceY = s => s ? pd(s).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' }) : '';
+
+/* ============ Helpers ============ */
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const byId = (list, id) => S[list].find(x => x.id === id) || null;
+const nm = (list, id) => (byId(list, id) || {}).name || '';
+const getCase = id => S.cases.find(c => c.id === id);
+function toast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 2200); }
+
+function makeCode(first, last, dob, side, selfId) {
+  const ini = ((first || '').trim()[0] || '') + ((last || '').trim()[0] || '');
+  const base = ini.toUpperCase() + '-' + (dob ? dob.slice(2, 4) : '??') + (side ? '-' + side[0] : '');
+  let code = base, i = 2;
+  while (S.cases.some(c => c.code === code && c.id !== selfId)) code = base + i++;
+  return code;
+}
+
+/* Follow-up: 2 business days after the request or the last follow-up, unless a date was set manually */
+function followUpDue(c) {
+  if (c.stage !== 'requested') return '';
+  if (c.followOverride) return c.followOverride;
+  return addBiz(c.lastContact || c.requestedDate || today(), 2);
+}
+
+/* Urgency tier: 2 = red, 1 = amber, 0 = green */
+function info(c) {
+  const t = today();
+  const dts = c.surgeryDate ? daysBetween(t, c.surgeryDate) : null;
+  let tier = 0, msg = '';
+  if (c.stage === 'requested') {
+    const due = followUpDue(c), over = daysBetween(due, t);
+    if (over > 0) { msg = `Follow-up overdue ${over} day${over > 1 ? 's' : ''}`; tier = 2; }
+    else if (over === 0) { msg = 'Follow up today'; tier = 2; }
+    else msg = 'Waiting on CT · follow up ' + nice(due);
+  } else if (c.stage === 'received') { msg = 'CT received · upload to Materialise'; tier = 1; }
+  else msg = 'Completed ' + nice(c.completedAt);
+  if (c.stage !== 'uploaded' && dts !== null) { if (dts <= 7) tier = 2; else if (dts <= 21) tier = Math.max(tier, 1); }
+  return { tier, dts, msg, due: followUpDue(c) };
+}
+function surgLabel(c, dts) {
+  if (!c.surgeryDate) return 'Surgery not scheduled';
+  if (dts < 0) return `Surgery was ${nice(c.surgeryDate)}`;
+  if (dts === 0) return 'Surgery TODAY';
+  if (dts === 1) return 'Surgery tomorrow';
+  return `Surgery ${nice(c.surgeryDate)} · ${dts} days`;
+}
+function cmp(a, b) {
+  const A = info(a), B = info(b);
+  if (A.tier !== B.tier) return B.tier - A.tier;
+  const ad = A.dts ?? 9999, bd = B.dts ?? 9999;
+  if (ad !== bd) return ad - bd;
+  return (A.due || '9').localeCompare(B.due || '9');
+}
+
+/* ============ Navigation ============ */
+let TAB = 'active';
+const F = { surgeon: '', when: 'all', q: '' };
+function go(t) { TAB = t; window.scrollTo(0, 0); render(); }
+function render() {
+  ['active', 'done', 'setup'].forEach(t => document.getElementById('tab-' + t).classList.toggle('on', t === TAB));
+  document.getElementById('fab').style.display = TAB === 'setup' ? 'none' : '';
+  if (TAB === 'setup') renderSetup(); else renderList(TAB === 'done');
+}
+
+/* ============ Lists ============ */
+function renderList(done) {
+  const all = S.cases.filter(c => done ? c.stage === 'uploaded' : c.stage !== 'uploaded');
+  let list = all;
+  if (F.surgeon) list = list.filter(c => c.surgeonId === F.surgeon);
+  if (F.q) { const q = F.q.toLowerCase(); list = list.filter(c => `${c.first} ${c.last} ${c.code}`.toLowerCase().includes(q)); }
+  if (!done && F.when !== 'all') list = list.filter(c => {
+    const d = info(c).dts;
+    if (F.when === 'none') return d === null;
+    return d !== null && d <= +F.when;
+  });
+  if (done) list.sort((a, b) => (b.completedAt || '').localeCompare(a.completedAt || ''));
+  else list.sort(cmp);
+
+  const urgent = all.filter(c => info(c).tier === 2).length;
+  const sub = done ? `${all.length} completed` :
+    (all.length ? (urgent ? `<b>${urgent} need${urgent === 1 ? 's' : ''} attention</b> · ${all.length} active` : `${all.length} active · all on track`) : '');
+  const chips = done ? '' : [['all', 'All dates'], ['7', 'Surgery ≤ 7 days'], ['14', '≤ 2 weeks'], ['30', '≤ 30 days'], ['none', 'Not scheduled']]
+    .map(([v, l]) => `<button class="chip ${F.when === v ? 'on' : ''}" onclick="F.when='${v}';render()">${l}</button>`).join('');
+  const surgSel = `<select class="chip ${F.surgeon ? 'on' : ''}" onchange="F.surgeon=this.value;render()"><option value="">All surgeons ▾</option>${S.surgeons.map(s => `<option value="${s.id}" ${F.surgeon === s.id ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select>`;
+
+  document.getElementById('hdr').innerHTML = `
+    <h1>${done ? 'Completed' : 'Patients'}</h1>
+    <div class="summary">${sub}</div>
+    ${all.length ? `<input class="search" type="search" placeholder="Search name or code" value="${esc(F.q)}" oninput="F.q=this.value;renderListBody(${done})">
+    <div class="filters">${surgSel}${chips}</div>` : ''}`;
+  renderListBody(done, list);
+}
+function renderListBody(done, list) {
+  if (!list) { // called from search input; recompute without redrawing header
+    const h = document.activeElement; renderList(done);
+    const s = document.querySelector('.search'); if (s && h && h.classList.contains('search')) { s.focus(); s.setSelectionRange(s.value.length, s.value.length); }
+    return;
+  }
+  const main = document.getElementById('main');
+  if (!S.surgeons.length || !S.centers.length) {
+    main.innerHTML = `<div class="empty"><b>Welcome!</b><br>Start by adding your surgeons and imaging centers in Setup. You only do this once.<button class="btn" onclick="go('setup')">Go to Setup</button></div>`; return;
+  }
+  if (!list.length) {
+    main.innerHTML = `<div class="empty">${done ? 'No completed patients yet.' : (S.cases.some(c => c.stage !== 'uploaded') ? 'No patients match these filters.' : 'No active patients.<br>Tap <b>+</b> to add one.')}</div>`; return;
+  }
+  main.innerHTML = list.map(card).join('');
+}
+function card(c) {
+  const i = info(c), pr = nm('procedures', c.procedureId);
+  const t = c.stage === 'uploaded' ? 9 : i.tier;
+  return `<div class="card t${t}" onclick="openDetail('${c.id}')">
+    <div class="row1"><span class="name">${esc(c.last)}, ${esc(c.first)}</span><span class="code">${esc(c.code)}</span></div>
+    <div class="meta">${esc(nm('surgeons', c.surgeonId))}${pr || c.side ? ' · ' + esc([c.side, pr].filter(Boolean).join(' ')) : ''}</div>
+    <div class="meta">${esc(surgLabel(c, i.dts))} · ${esc(nm('centers', c.centerId))}</div>
+    <span class="badge">${esc(i.msg)}</span></div>`;
+}
+
+/* ============ Sheet (full-screen panel) ============ */
+const sheet = document.getElementById('sheet');
+function openSheet(html) { sheet.innerHTML = html; sheet.scrollTop = 0; void sheet.offsetHeight; sheet.classList.add('open'); }
+function closeSheet() { sheet.classList.remove('open'); render(); }
+
+/* ============ Patient form ============ */
+let D = null;
+function opts(list, sel, placeholder) {
+  return `<option value="">${placeholder}</option>` + S[list].map(x => `<option value="${x.id}" ${x.id === sel ? 'selected' : ''}>${esc(x.name)}</option>`).join('') + `<option value="__new">+ Add new…</option>`;
+}
+function pick(list, el, field) {
+  if (el.value === '__new') {
+    const name = (prompt('Name') || '').trim();
+    if (name) { const item = { id: uid(), name }; S[list].push(item); save(true); D[field] = item.id; }
+    drawForm(); return;
+  }
+  D[field] = el.value;
+}
+function openForm(id) {
+  if (!id && (!S.surgeons.length || !S.centers.length)) { toast('Add a surgeon and an imaging center in Setup first'); go('setup'); return; }
+  const c = id ? getCase(id) : null;
+  D = c ? JSON.parse(JSON.stringify(c)) : { id: null, first: '', last: '', dob: '', surgeonId: '', centerId: '', hospitalId: '', procedureId: '', side: '', implantId: '', surgeryDate: '', requestedDate: today(), stage: 'requested', notes: [] };
+  D._noSurg = c ? !c.surgeryDate : false;
+  drawForm();
+}
+function drawForm() {
+  const isNew = !D.id;
+  const seg = (field, vals) => `<div class="seg">${vals.map(([v, l]) => `<button type="button" class="${D[field] === v ? 'on' : ''}" onclick="D.${field}='${v}';drawForm()">${l}</button>`).join('')}</div>`;
+  const keep = sheet.classList.contains('open') ? sheet.scrollTop : 0;
+  openSheet(`
+  <div class="sheet-head"><button class="link" onclick="${isNew ? 'closeSheet()' : `openDetail('${D.id}')`}">Cancel</button><b>${isNew ? 'New Patient' : 'Edit Patient'}</b><button class="link b" onclick="saveForm()">Save</button></div>
+  <div class="two">
+    <div><label>First name</label><input value="${esc(D.first)}" autocapitalize="words" autocomplete="off" oninput="D.first=this.value;updCode()"></div>
+    <div><label>Last name</label><input value="${esc(D.last)}" autocapitalize="words" autocomplete="off" oninput="D.last=this.value;updCode()"></div>
+  </div>
+  <label>Date of birth</label><input type="date" value="${esc(D.dob)}" onchange="D.dob=this.value;updCode()">
+  <div class="hint">Case code: <span class="code-big" id="codePrev">${esc(makeCode(D.first, D.last, D.dob, D.side, D.id))}</span></div>
+  <label>Surgeon</label><select onchange="pick('surgeons',this,'surgeonId')">${opts('surgeons', D.surgeonId, 'Choose surgeon')}</select>
+  <label>Procedure</label><select onchange="pick('procedures',this,'procedureId')">${opts('procedures', D.procedureId, 'Choose procedure')}</select>
+  <label>Side</label>${seg('side', [['Left', 'Left'], ['Right', 'Right']])}
+  <label>Hospital (surgery location)</label><select onchange="pick('hospitals',this,'hospitalId')">${opts('hospitals', D.hospitalId, 'Choose hospital')}</select>
+  ${S.implants.length ? `<label>Implant system</label><select onchange="pick('implants',this,'implantId')">${opts('implants', D.implantId, 'None')}</select>` : ''}
+  <label>Surgery date</label>
+  <div class="seg"><button type="button" class="${!D._noSurg ? 'on' : ''}" onclick="D._noSurg=false;drawForm()">Date</button><button type="button" class="${D._noSurg ? 'on' : ''}" onclick="D._noSurg=true;drawForm()">Not yet scheduled</button></div>
+  ${!D._noSurg ? `<input style="margin-top:8px" type="date" value="${esc(D.surgeryDate)}" onchange="D.surgeryDate=this.value">` : ''}
+  <label>CT scan done at (imaging center)</label><select onchange="pick('centers',this,'centerId')">${opts('centers', D.centerId, 'Choose imaging center')}</select>
+  <label>Date CT was requested</label><input type="date" value="${esc(D.requestedDate)}" onchange="D.requestedDate=this.value">
+  <div class="hint">You'll be reminded to follow up 2 business days later.</div>
+  <label>Stage</label>${seg('stage', [['requested', 'Requested'], ['received', 'Received'], ['uploaded', 'Uploaded']])}
+  ${isNew ? `<label>First note (optional)</label><textarea id="firstNote" placeholder="e.g. Emailed records dept, asked for disc + portal link"></textarea>` : ''}
+  <button class="btn" onclick="saveForm()">Save</button>
+  `);
+  sheet.scrollTop = keep;
+}
+function updCode() { const el = document.getElementById('codePrev'); if (el) el.textContent = makeCode(D.first, D.last, D.dob, D.side, D.id); }
+function saveForm() {
+  const miss = [];
+  if (!D.first.trim()) miss.push('first name'); if (!D.last.trim()) miss.push('last name'); if (!D.dob) miss.push('date of birth');
+  if (!D.side) miss.push('side (left/right)');
+  if (!D.surgeonId) miss.push('surgeon'); if (!D.centerId) miss.push('imaging center');
+  if (!D._noSurg && !D.surgeryDate) miss.push('surgery date (or tap "Not yet scheduled")');
+  if (miss.length) { alert('Please add: ' + miss.join(', ')); return; }
+  if (D._noSurg) D.surgeryDate = '';
+  const firstNote = (document.getElementById('firstNote') || {}).value || '';
+  D.first = D.first.trim(); D.last = D.last.trim();
+  D.code = makeCode(D.first, D.last, D.dob, D.side, D.id);
+  const stamp = new Date().toISOString();
+  let c = D.id ? getCase(D.id) : null;
+  if (!c) {
+    c = { id: uid(), createdAt: stamp, notes: [] }; S.cases.push(c);
+    c.notes.push({ ts: stamp, text: `CT requested from ${nm('centers', D.centerId)}` });
+    if (firstNote.trim()) c.notes.push({ ts: stamp, text: firstNote.trim() });
+  } else if (c.stage !== D.stage) {
+    c.notes.push({ ts: stamp, text: 'Stage changed to ' + STAGES[D.stage] });
+  }
+  const prevStage = c.stage;
+  ['first', 'last', 'dob', 'code', 'surgeonId', 'centerId', 'hospitalId', 'procedureId', 'side', 'implantId', 'surgeryDate', 'requestedDate', 'stage'].forEach(k => c[k] = D[k]);
+  if (c.stage === 'uploaded' && prevStage !== 'uploaded') c.completedAt = today();
+  if (c.stage !== 'uploaded') c.completedAt = null;
+  if (c.stage === 'received' && !c.receivedAt) c.receivedAt = today();
+  save();
+  if (c.stage === 'uploaded' && prevStage !== 'uploaded') { toast('Moved to Completed'); }
+  else toast('Saved');
+  openDetail(c.id);
+}
+
+/* ============ Patient detail ============ */
+function openDetail(id) {
+  const c = getCase(id); if (!c) return closeSheet();
+  const i = info(c), ce = byId('centers', c.centerId) || {}, sg = nm('surgeons', c.surgeonId);
+  const order = ['requested', 'received', 'uploaded'], si = order.indexOf(c.stage);
+  const row = (k, v) => v ? `<div class="li"><span class="k">${k}</span><span class="v">${v}</span></div>` : '';
+  const subj = encodeURIComponent(`CT scan request: ${c.first} ${c.last}, DOB ${niceY(c.dob)}`);
+  const body = encodeURIComponent(`Hi${ce.contact ? ' ' + ce.contact : ''},\n\nI'm following up on the CT scan for ${c.first} ${c.last}, DOB ${niceY(c.dob)}, for upcoming surgery with ${sg}. Could you please send the images when you get a chance?\n\nThank you,`);
+  let actions = '';
+  if (c.stage === 'requested') actions = `<div class="btns"><button class="btn ghost" onclick="logFollowUp('${c.id}')">Log follow-up</button><button class="btn" onclick="setStage('${c.id}','received')">CT received ✓</button></div>`;
+  if (c.stage === 'received') actions = `<button class="btn" onclick="setStage('${c.id}','uploaded')">Uploaded to Materialise ✓</button><div class="hint" style="text-align:center">This moves the patient to Completed.</div>`;
+  if (c.stage === 'uploaded') actions = `<button class="btn ghost" onclick="setStage('${c.id}','received')">Reopen patient</button>`;
+  const notes = [...(c.notes || [])].reverse().map(n => `<div class="note"><small>${new Date(n.ts).toLocaleString('en-US', { month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</small>${esc(n.text)}</div>`).join('');
+  openSheet(`
+  <div class="sheet-head"><button class="link" onclick="closeSheet()">‹ ${c.stage === 'uploaded' ? 'Completed' : 'Patients'}</button><button class="link" onclick="openForm('${c.id}')">Edit</button></div>
+  <h2>${esc(c.first)} ${esc(c.last)}</h2>
+  <div class="code-big">${esc(c.code)}</div>
+  <div class="status t${c.stage === 'uploaded' ? 0 : i.tier}">${esc(i.msg)}<div style="font-weight:500;font-size:14px;margin-top:2px">${esc(surgLabel(c, i.dts))}</div></div>
+  <div class="steps">${order.map((s, k) => `<div class="${k <= si ? 'done' : ''}">${['Requested', 'Received', 'Uploaded'][k]}</div>`).join('')}</div>
+  ${actions}
+  ${c.stage === 'requested' ? `<label>Next follow-up</label><input type="date" value="${i.due}" onchange="setFollow('${c.id}',this.value)"><div class="hint">Change this if the center gave you a date (e.g. "sending Monday").</div>` : ''}
+
+  <h3>Imaging center</h3>
+  <div class="list">${row('Center', esc(ce.name))}${row('Contact', esc(ce.contact))}${row('Phone', esc(ce.phone))}${row('Fax', esc(ce.fax))}${row('Email', esc(ce.email))}${row('CT requested', niceY(c.requestedDate))}</div>
+  <div class="contact">
+    ${ce.phone ? `<a class="btn ghost" href="tel:${esc(ce.phone.replace(/[^\d+]/g, ''))}">Call</a>` : ''}
+    ${ce.email ? `<a class="btn ghost" href="mailto:${esc(ce.email)}?subject=${subj}&body=${body}">Email</a>` : ''}
+  </div>
+
+  <h3>Case</h3>
+  <div class="list">${row('Date of birth', niceY(c.dob))}${row('Surgeon', esc(sg))}${row('Procedure', esc([c.side, nm('procedures', c.procedureId)].filter(Boolean).join(' ')))}${row('Hospital', esc(nm('hospitals', c.hospitalId)))}${row('Surgery', c.surgeryDate ? niceY(c.surgeryDate) : 'Not yet scheduled')}${row('Implant system', esc(nm('implants', c.implantId)))}${row('Completed', niceY(c.completedAt))}</div>
+
+  <h3>Notes</h3>
+  <textarea id="noteTxt" placeholder="e.g. Called, spoke to Maria, sending today"></textarea>
+  <button class="btn ghost" onclick="addNote('${c.id}')">Add note</button>
+  <div class="list" style="margin-top:12px">${notes || '<div class="note">No notes yet.</div>'}</div>
+
+  <button class="btn danger" style="margin-top:28px" onclick="delCase('${c.id}')">Delete patient</button>
+  `);
+}
+function addNote(id) { const t = document.getElementById('noteTxt').value.trim(); if (!t) return; getCase(id).notes.push({ ts: new Date().toISOString(), text: t }); save(true); openDetail(id); }
+function logFollowUp(id) {
+  const c = getCase(id); const extra = (document.getElementById('noteTxt').value || '').trim();
+  c.lastContact = today(); c.followOverride = '';
+  c.notes.push({ ts: new Date().toISOString(), text: `Followed up with ${nm('centers', c.centerId)}${extra ? ': ' + extra : ''}` });
+  save(); toast('Next follow-up ' + nice(followUpDue(c))); openDetail(id);
+}
+function setFollow(id, v) { const c = getCase(id); c.followOverride = v || ''; save(); toast(v ? 'Follow-up set for ' + nice(v) : 'Follow-up reset'); openDetail(id); }
+function setStage(id, st) {
+  const c = getCase(id); c.stage = st;
+  if (st === 'received') { c.receivedAt = c.receivedAt || today(); c.completedAt = null; }
+  if (st === 'uploaded') c.completedAt = today();
+  c.notes.push({ ts: new Date().toISOString(), text: { received: 'CT received', uploaded: 'CT uploaded to Materialise, case completed' }[st] });
+  save();
+  if (st === 'uploaded') { toast('Done! Moved to Completed'); closeSheet(); } else openDetail(id);
+}
+function delCase(id) { if (!confirm('Delete this patient permanently?')) return; S.cases = S.cases.filter(c => c.id !== id); save(); toast('Deleted'); closeSheet(); }
+
+/* ============ Setup ============ */
+const LISTS = {
+  surgeons: { title: 'Surgeons', one: 'Surgeon', contact: true },
+  centers: { title: 'Imaging centers', one: 'Imaging center', contact: true },
+  hospitals: { title: 'Hospitals', one: 'Hospital' },
+  procedures: { title: 'Procedures', one: 'Procedure' },
+  implants: { title: 'Implant systems', one: 'Implant system', hint: 'Optional. Once you add one, an Implant system field appears on each patient.' }
+};
+function renderSetup() {
+  document.getElementById('hdr').innerHTML = `<h1>Setup</h1><div class="summary">Your lists, Google Sheet sync and backups</div>`;
+  const sec = key => {
+    const L = LISTS[key];
+    return `<h3>${L.title}</h3>${L.hint ? `<div class="hint" style="margin:-4px 0 8px">${L.hint}</div>` : ''}
+    <div class="list">${S[key].map(x => `<div class="li tap" onclick="editItem('${key}','${x.id}')"><span>${esc(x.name)}${L.contact && (x.phone || x.email || x.fax || x.contact) ? `<div class="meta">${esc([x.contact, x.phone, x.email].filter(Boolean).join(' · '))}</div>` : ''}</span><span class="chev">›</span></div>`).join('')}
+    <div class="li tap" onclick="editItem('${key}')"><span style="color:var(--accent);font-weight:600">+ Add ${L.one.toLowerCase()}</span></div></div>`;
+  };
+  const sy = S.sync;
+  const status = !sy.url ? 'Not connected' : sy.err ? `<span class="bad">Last sync failed: ${esc(sy.err)}</span>` : sy.last ? `<span class="ok">Synced ${new Date(sy.last).toLocaleString('en-US', { month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>` : 'Connected, not synced yet';
+  document.getElementById('main').innerHTML = `
+    ${sec('surgeons')}${sec('centers')}${sec('hospitals')}${sec('procedures')}${sec('implants')}
+    <h3>Google Sheet sync (for Claude Duet)</h3>
+    <div class="hint" style="margin:-4px 0 8px">Only the case code, surgeon, imaging center, hospital, procedure, side, stage and follow-up dates are sent. No full names, exact birth dates, exact surgery dates or notes.</div>
+    <div class="list" style="padding:2px 14px 14px">
+      <label>Apps Script web app URL</label><input id="syUrl" value="${esc(sy.url)}" placeholder="https://script.google.com/macros/s/…/exec" autocapitalize="off" autocorrect="off">
+      <label>Secret key</label>
+      <div style="display:flex;gap:8px"><input id="syTok" value="${esc(sy.token)}" autocapitalize="off" autocorrect="off" style="flex:1"><button class="chip" onclick="genTok()">New</button></div>
+      <div class="hint">Must match SECRET in the Apps Script. See the README.</div>
+      <div class="btns"><button class="btn" onclick="saveSync()">Save & sync now</button></div>
+      <div class="hint" style="margin-top:10px">Status: ${status}</div>
+    </div>
+    <h3>Backup</h3>
+    <div class="hint" style="margin:-4px 0 8px">Patient names live only on this phone. Export a backup now and then (save it to Files).</div>
+    <div class="btns"><button class="btn ghost" onclick="exportBackup()">Export backup</button><button class="btn ghost" onclick="document.getElementById('importFile').click()">Restore</button></div>
+    <h3>Duet setup message</h3>
+    <div class="hint" style="margin:-4px 0 8px">Copy this into Claude Duet once your Sheet is syncing.</div>
+    <pre class="prompt" id="duetPrompt">${esc(DUET_PROMPT)}</pre>
+    <button class="btn ghost" onclick="copyPrompt()">Copy message</button>
+    <div class="hint" style="text-align:center;margin-top:24px">CT Tracker · data stored on this device</div>`;
+}
+function editItem(key, id) {
+  const L = LISTS[key], x = id ? byId(key, id) : { name: '', contact: '', phone: '', email: '', fax: '' };
+  const f = (k, l, t = 'text', ph = '') => `<label>${l}</label><input id="f_${k}" type="${t}" value="${esc(x[k] || '')}" placeholder="${ph}">`;
+  openSheet(`
+  <div class="sheet-head"><button class="link" onclick="closeSheet()">Cancel</button><b>${id ? 'Edit' : 'Add'} ${L.one.toLowerCase()}</b><button class="link b" onclick="saveItem('${key}','${id || ''}')">Save</button></div>
+  ${f('name', 'Name', 'text', key === 'surgeons' ? 'Dr. Lee' : '')}
+  ${L.contact ? f('contact', 'Contact person (optional)') + f('phone', 'Phone (optional)', 'tel') + f('email', 'Email (optional)', 'email') + f('fax', 'Fax (optional)', 'tel') : ''}
+  <button class="btn" onclick="saveItem('${key}','${id || ''}')">Save</button>
+  ${id ? `<button class="btn danger" onclick="delItem('${key}','${id}')">Delete</button>` : ''}`);
+}
+function saveItem(key, id) {
+  const g = k => { const el = document.getElementById('f_' + k); return el ? el.value.trim() : ''; };
+  if (!g('name')) { alert('Name is required'); return; }
+  let x = id ? byId(key, id) : null;
+  if (!x) { x = { id: uid() }; S[key].push(x); }
+  x.name = g('name');
+  if (LISTS[key].contact) ['contact', 'phone', 'email', 'fax'].forEach(k => x[k] = g(k));
+  save(); closeSheet();
+}
+function delItem(key, id) {
+  const field = { surgeons: 'surgeonId', centers: 'centerId', hospitals: 'hospitalId', procedures: 'procedureId', implants: 'implantId' }[key];
+  const used = S.cases.filter(c => c[field] === id).length;
+  if (used) { alert(`Can't delete: ${used} patient(s) use this. Edit those patients first.`); return; }
+  if (!confirm('Delete?')) return;
+  S[key] = S[key].filter(x => x.id !== id); save(); closeSheet();
+}
+
+/* ============ Google Sheet sync ============ */
+function payload() {
+  const rowOf = c => {
+    const ce = byId('centers', c.centerId) || {}, i = info(c);
+    return {
+      code: c.code, surgeon: nm('surgeons', c.surgeonId), procedure: nm('procedures', c.procedureId), side: c.side || '',
+      hospital: nm('hospitals', c.hospitalId), stage: STAGES[c.stage],
+      nextAction: { requested: 'Get CT from imaging center', received: 'Upload CT to Materialise', uploaded: 'Done' }[c.stage],
+      ctRequested: c.requestedDate || '', lastFollowUp: c.lastContact || '', followUpDue: i.due || '',
+      surgeryWeekOf: c.surgeryDate ? weekOf(c.surgeryDate) : 'Not scheduled',
+      center: ce.name || '', centerContact: ce.contact || '', centerPhone: ce.phone || '', centerEmail: ce.email || '', centerFax: ce.fax || '',
+      completed: c.completedAt || ''
+    };
+  };
+  const act = S.cases.filter(c => c.stage !== 'uploaded').sort(cmp).map(rowOf);
+  const done = S.cases.filter(c => c.stage === 'uploaded').sort((a, b) => (b.completedAt || '').localeCompare(a.completedAt || '')).map(rowOf);
+  return JSON.stringify({ token: S.sync.token, sentAt: new Date().toISOString(), active: act, completed: done });
+}
+async function sync(manual) {
+  if (!S.sync.url) return;
+  const body = payload();
+  try {
+    const r = await fetch(S.sync.url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || 'Sync failed');
+    S.sync.last = new Date().toISOString(); S.sync.err = null;
+  } catch (e) {
+    if (e instanceof TypeError || e instanceof SyntaxError) {
+      try { await fetch(S.sync.url, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body }); S.sync.last = new Date().toISOString(); S.sync.err = null; }
+      catch (e2) { S.sync.err = navigator.onLine ? 'Could not reach Google' : 'Offline, will retry'; }
+    } else S.sync.err = e.message;
+  }
+  save(true);
+  if (manual) toast(S.sync.err ? 'Sync failed: ' + S.sync.err : 'Synced to Google Sheet');
+  if (TAB === 'setup' && !sheet.classList.contains('open')) render();
+}
+function genTok() { const a = new Uint8Array(12); crypto.getRandomValues(a); document.getElementById('syTok').value = Array.from(a, b => b.toString(16).padStart(2, '0')).join(''); }
+function saveSync() {
+  const url = document.getElementById('syUrl').value.trim(), tok = document.getElementById('syTok').value.trim();
+  if (url && !/^https:\/\/script\.google\.com\//.test(url)) { alert('That doesn\'t look like an Apps Script URL. It should start with https://script.google.com/'); return; }
+  S.sync.url = url; S.sync.token = tok; save(true);
+  if (url) sync(true); else render();
+}
+
+/* ============ Backup ============ */
+async function exportBackup() {
+  const name = `ct-tracker-backup-${today()}.json`;
+  const blob = new Blob([JSON.stringify(S, null, 1)], { type: 'application/json' });
+  const file = new File([blob], name, { type: 'application/json' });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], title: name }); return; } catch (e) { if (e.name === 'AbortError') return; } }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+function importBackup(input) {
+  const f = input.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const d = JSON.parse(r.result); if (!d.cases) throw 0;
+      if (!confirm(`Restore backup with ${d.cases.length} patients? This replaces what's on this phone.`)) return;
+      S = Object.assign(fresh(), d); save(); toast('Backup restored'); render();
+    } catch (e) { alert('That file isn\'t a CT Tracker backup.'); }
+    input.value = '';
+  };
+  r.readAsText(f);
+}
+
+/* ============ Duet ============ */
+const DUET_PROMPT = `Please keep an eye on my Google Sheet "CT Tracker" every weekday. It tracks CT scans I need from imaging centers so surgeons can plan shoulder implants. Each patient is a case code (initials + birth year + side, e.g. JS-85-R = right shoulder).
+
+On the "Active" tab:
+- If Stage is "CT Requested" and Follow-up Due is today or earlier, remind me to follow up with that imaging center. Include the center name, contact, phone and email, and offer to draft a follow-up email for my approval (leave a [patient name / DOB] placeholder for me to fill in).
+- If Stage is "CT Received", remind me to upload it to Materialise.
+- Treat anything with Surgery Week Of within the next 2 weeks as urgent and list it first.
+
+Send me one short summary each weekday morning, and don't message me when nothing needs attention.`;
+function copyPrompt() { navigator.clipboard.writeText(DUET_PROMPT).then(() => toast('Copied'), () => toast('Long-press the text to copy')); }
+
+/* ============ Start ============ */
+render();
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { if (!sheet.classList.contains('open')) render(); if (S.sync.url && S.sync.err) sync(false); } });
+window.addEventListener('online', () => { if (S.sync.url && S.sync.err) sync(false); });
+</script>
+</body>
+</html>
